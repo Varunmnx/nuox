@@ -1,7 +1,6 @@
-const { RESPONSES } = require("../common/index.js");
+const { RESPONSES, APIResponseManager } = require("../common/index.js");
 const ArticleModel = require("../models/article.model.js");
 const CategoryModel = require("../models/category.model.js");
-const mongoose = require("mongoose");
 // create a feed
 exports.create = async (req, res, next) => {
   try {
@@ -19,9 +18,7 @@ exports.create = async (req, res, next) => {
     console.log(Object.values(req.body));
     Object.entries(req.body).map(([key, item]) => {
       if (key !== "image" && !item) {
-        return res
-          .status(RESPONSES.BAD_REQUEST)
-          .json({ message: `please provide a ${key}` });
+        return APIResponseManager.badRequest(res, `please provide a ${key}`);
       }
     });
 
@@ -29,11 +26,7 @@ exports.create = async (req, res, next) => {
       categories.forEach(async (category) => {
         const existingCategory = await CategoryModel.findById(category);
         if (!existingCategory) {
-          return res
-            .status(RESPONSES.BAD_REQUEST)
-            .json({
-              message: `category not found with categoryId ${category}`,
-            });
+          return APIResponseManager.badRequest(res, "category not found");
         }
       });
     }
@@ -52,13 +45,13 @@ exports.create = async (req, res, next) => {
       .save()
       .then((data) => {
         if (data) {
-          return res.status(RESPONSES.SUCCESS).json(data);
+          return APIResponseManager.success(res, data);
         }
       })
-      .catch((err) => res.status(RESPONSES.SERVER_ERROR).json(err));
+      .catch((err) => APIResponseManager.notSuccess(res, err));
   } catch (error) {
     console.log(error);
-    return res.status(RESPONSES.SERVER_ERROR).json({ message: error });
+    return APIResponseManager.notSuccess(res, error);
   }
 };
 
@@ -67,22 +60,29 @@ exports.update = (req, res, next) => {
   try {
     const { id } = req.params;
     if (!id) {
-      return res
-        .status(RESPONSES.BAD_REQUEST)
-        .json({ message: "please provide a objectId" });
+      return APIResponseManager.badRequest(
+        res,
+        "please provide a id as parameter"
+      );
     }
 
     ArticleModel.findByIdAndUpdate(id, req.body)
-      .then((data) => res.status(RESPONSES.SUCCESS).json(data))
+      .then((data) => {
+        if (data) {
+          return APIResponseManager.success(res, data);
+        }
+        return APIResponseManager.badRequest(
+          res,
+          "no such feed was found on the db"
+        );
+      })
       .catch((err) => {
         console.log(err);
-        return res
-          .status(RESPONSES.SERVER_ERROR)
-          .json({ message: err.message });
+        return APIResponseManager.notSuccess(res, err);
       });
   } catch (error) {
     console.log(error);
-    return res.status(RESPONSES.SERVER_ERROR).json({ message: error });
+    return APIResponseManager.notSuccess(res, error);
   }
 };
 
@@ -92,28 +92,25 @@ exports.findOne = (req, res, next) => {
     console.log("finding one");
     const { id } = req.params;
     if (!id) {
-      return res
-        .status(RESPONSES.BAD_REQUEST)
-        .json({ message: "please provide a id" });
+      return APIResponseManager.badRequest(res, "please provide a id");
     }
 
     ArticleModel.findById(id)
       .then((data) => {
         if (data) {
-          return res.status(RESPONSES.SUCCESS).json(data);
+          return APIResponseManager.success(res, data);
         }
-        return res
-          .status(RESPONSES.NOT_FOUND)
-          .json({ message: "no such feed was found on the db" });
+        return APIResponseManager.badRequest(
+          res,
+          "no such feed was found on the db"
+        );
       })
       .catch((err) => {
-        return res
-          .status(RESPONSES.SERVER_ERROR)
-          .json({ message: err.message });
+        return APIResponseManager.notSuccess(res, err);
       });
   } catch (error) {
     console.log(error);
-    return res.status(RESPONSES.SERVER_ERROR).json({ message: error });
+    return APIResponseManager.notSuccess(res, error);
   }
 };
 
@@ -122,13 +119,10 @@ exports.findAll = async (req, res, next) => {
   try {
     let { category, readTime } = req.query;
     const query = {};
-    console.log(category);
     if (category && !Array.isArray(category)) {
       const existingCategory = await CategoryModel.findById(category);
       if (!existingCategory) {
-        return res
-          .status(RESPONSES.BAD_REQUEST)
-          .json({ message: "category not found" });
+        return APIResponseManager.badRequest(res, "category not found");
       }
       query.categories = { $in: [existingCategory.id] };
     } else if (Array.isArray(category) && category.length > 0) {
@@ -146,25 +140,23 @@ exports.findAll = async (req, res, next) => {
     console.log(query);
     const matchedArticles = await ArticleModel.find(query);
     if (matchedArticles) {
-      return res.status(RESPONSES.SUCCESS).json({ articles: matchedArticles });
+      return APIResponseManager.success(res, matchedArticles);
     }
 
-    return res.status(RESPONSES.SUCCESS).json({ articles: [] });
+    return APIResponseManager.badRequest(res, "no articles found");
   } catch (error) {
     console.log(error);
-    return res.status(RESPONSES.SERVER_ERROR).json({ message: error });
+    return APIResponseManager.notSuccess(res, error);
   }
 };
 
 exports.deleteAll = async (req, res, next) => {
   try {
     await ArticleModel.deleteMany({});
-    return res
-      .status(RESPONSES.SUCCESS)
-      .json({ message: "deleted all articles" });
+    return APIResponseManager.success(res, "deleted all articles");
   } catch (error) {
     console.log(error);
-    return res.status(RESPONSES.SERVER_ERROR).json({ message: error });
+    return APIResponseManager.notSuccess(res, error);
   }
 };
 
@@ -174,30 +166,28 @@ exports.delete = async (req, res, next) => {
     const { id } = req.params;
     console.log("deleting", req.params);
     if (!id) {
-      return res
-        .status(RESPONSES.BAD_REQUEST)
-        .json({ message: "please provide a id as parameter" });
+      return APIResponseManager.badRequest(
+        res,
+        "please provide a id as parameter"
+      );
     }
 
     ArticleModel.findByIdAndDelete(id, req.body)
       .then((data) => {
         if (data) {
-          return res
-            .status(RESPONSES.SUCCESS)
-            .json({ message: `deleted feed with id ${id}` });
+          return APIResponseManager.success(
+            res,
+            `deleted article with id ${id}`
+          );
         }
 
-        return res
-          .status(RESPONSES.NOT_FOUND)
-          .json({ message: "unable to find article" });
+        return APIResponseManager.badRequest(res, `no article with id ${id}`);
       })
       .catch((err) => {
-        return res
-          .status(RESPONSES.SERVER_ERROR)
-          .json({ message: err.message });
+        return APIResponseManager.notSuccess(res, err.message);
       });
   } catch (error) {
     console.log(error);
-    return res.status(RESPONSES.SERVER_ERROR).json({ message: error });
+    return APIResponseManager.notSuccess(res, error);
   }
 };

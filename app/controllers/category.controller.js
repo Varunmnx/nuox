@@ -1,5 +1,4 @@
-const { Console } = require("console");
-const { RESPONSES } = require("../common/index.js");
+const { RESPONSES, APIResponseManager } = require("../common/index.js");
 const categoryModel = require("../models/category.model");
 
 exports.create = async (req, res, next) => {
@@ -7,30 +6,24 @@ exports.create = async (req, res, next) => {
     const { name } = req.body;
     console.log("creating  category");
     if (!name) {
-      return res
-        .status(RESPONSES.SERVER_ERROR)
-        .json({ message: "provide a category name" });
+      return APIResponseManager.badRequest(res, "provide a category name");
     }
 
     const existingName = await categoryModel.findOne({ name });
     console.log("existingname", existingName);
     if (existingName) {
       console.log("existingName", existingName);
-      return res
-        .status(RESPONSES.BAD_REQUEST)
-        .json({ message: "name is already taken" });
+      return APIResponseManager.badRequest(res, "name is already taken");
     }
     let categoryCreated = await new categoryModel({ name });
     categoryCreated = await categoryCreated.save();
     if (categoryCreated) {
-      return res.status(RESPONSES.SUCCESS).json({ category: categoryCreated });
+      return APIResponseManager.success(res, categoryCreated);
     }
-    return res
-      .status(RESPONSES.SERVER_ERROR)
-      .json({ message: "unable to create category" });
+    return APIResponseManager.badRequest(res, "unable to create category");
   } catch (error) {
     console.log(error);
-    return res.status(RESPONSES.SERVER_ERROR).json({ message: error });
+    return APIResponseManager.notSuccess(res, error);
   }
 };
 
@@ -39,36 +32,32 @@ exports.delete = async (req, res, next) => {
     const { id } = req.query;
     console.log("deleting", id);
     if (!id) {
-      res.status(RESPONSES.SERVER_ERROR, { message: "provide a category id" });
+      return APIResponseManager.badRequest(res, "provide a category id");
     }
     await categoryModel.findByIdAndDelete(id);
-    return res.status(RESPONSES.SUCCESS, {
-      message: "deleted  category with id " + id,
-    });
+    return APIResponseManager.success(res, "deleted  category with id " + id);
   } catch (error) {
     console.log(error);
-    return res.status(RESPONSES.SERVER_ERROR).json({ message: error });
+    return APIResponseManager.notSuccess(res, error);
   }
 };
 
 exports.deleteAll = async (req, res, next) => {
   try {
     await categoryModel.deleteMany({});
-    return res
-      .status(RESPONSES.SUCCESS)
-      .json({ message: "deleted all categories" });
+    return APIResponseManager.success(res, "deleted all categories");
   } catch (error) {
     console.log(error);
-    return res.status(RESPONSES.SERVER_ERROR).json({ message: error });
+    return APIResponseManager.notSuccess(res, error);
   }
 };
 
 exports.get = async (req, res, next) => {
   try {
     const response = await categoryModel.find({});
-    return res.status(RESPONSES.SUCCESS).json({ categories: response });
+    return APIResponseManager.success(res, response);
   } catch (error) {
     console.log(error);
-    return res.status(RESPONSES.SERVER_ERROR).json({ message: error });
+    return APIResponseManager.notSuccess(res, error);
   }
 };

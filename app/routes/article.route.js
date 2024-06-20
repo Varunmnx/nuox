@@ -3,10 +3,11 @@ const express = require("express");
 const router = express.Router();
 
 // Define the routes
-router.post("/", article.create);
-router.get("/", article.findAll);
-router.get("/:id", article.findOne);
-router.put("/:id", article.update);
-router.delete("/:id", article.delete);
+router.route("/").post(article.create).get(article.findAll);
+router
+  .route("/:id")
+  .get(article.findOne)
+  .put(article.update)
+  .delete(article.delete);
 
 module.exports = router;

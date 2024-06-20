@@ -2,4 +2,6 @@
 node_modules
 logs
 eslint.*
-.env.*
+.env*
+# Unignore .env.sample
+!.env.read
